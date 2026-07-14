@@ -2,10 +2,14 @@
   "name": "attendance-system",
   "private": true,
   "scripts": {
-    "setup": "cd backend && ./gradlew build -x test",
+    "setup": "cd backend && ./gradlew build -x test && cd ../frontend && npm install",
     "boot": "cd backend && ./gradlew bootRun --args='--spring.profiles.active=local'",
     "boot:stop": "pkill -f 'attendance.*spring.profiles.active' || true",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:frontend:sagemaker": "cd frontend && npm run dev:sagemaker",
     "check:backend": "cd backend && ./gradlew test",
+    "check:frontend": "cd frontend && npm run test",
+    "lint:frontend": "cd frontend && npm run lint",
     "clean": "cd backend && ./gradlew clean"
   }
 }
