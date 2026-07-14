@@ -19,3 +19,4 @@ spring:
     user:
       name: dev
       password: dev
+      roles: ADMIN
