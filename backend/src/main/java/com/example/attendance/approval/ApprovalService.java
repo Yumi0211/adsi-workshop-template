@@ -12,7 +12,7 @@ public interface ApprovalService {
 
     List<ApprovalRequestResponse> getPendingRequests(Long approverId);
 
-    ApprovalRequestDetailResponse getRequestDetail(Long requestId);
+    ApprovalRequestDetailResponse getRequestDetail(Long requesterId, Long requestId);
 
     ApprovalRequestResponse approve(Long approverId, Long requestId);
 

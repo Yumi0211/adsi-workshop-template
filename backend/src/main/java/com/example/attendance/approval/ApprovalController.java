@@ -44,8 +44,10 @@ public class ApprovalController {
     }
 
     @GetMapping("/approvals/{id}")
-    public ApprovalRequestDetailResponse getRequestDetail(@PathVariable Long id) {
-        return approvalService.getRequestDetail(id);
+    public ApprovalRequestDetailResponse getRequestDetail(
+            @RequestParam Long requesterId,
+            @PathVariable Long id) {
+        return approvalService.getRequestDetail(requesterId, id);
     }
 
     @PutMapping("/approvals/{id}/approve")

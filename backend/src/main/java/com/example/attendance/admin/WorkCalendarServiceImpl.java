@@ -38,9 +38,10 @@ public class WorkCalendarServiceImpl implements WorkCalendarService {
             throw new BusinessException("指定された日付は既に登録されています");
         }
 
+        var dayType = parseDayType(request.dayType());
         var calendar = WorkCalendar.builder()
                 .calendarDate(request.calendarDate())
-                .dayType(DayType.valueOf(request.dayType()))
+                .dayType(dayType)
                 .description(request.description())
                 .fiscalYear(request.fiscalYear())
                 .build();
@@ -54,11 +55,19 @@ public class WorkCalendarServiceImpl implements WorkCalendarService {
         var calendar = workCalendarRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WorkCalendar", id));
 
-        calendar.setDayType(DayType.valueOf(request.dayType()));
+        calendar.setDayType(parseDayType(request.dayType()));
         calendar.setDescription(request.description());
 
         calendar = workCalendarRepository.save(calendar);
         return toResponse(calendar);
+    }
+
+    private DayType parseDayType(String value) {
+        try {
+            return DayType.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("無効な日種別です: " + value);
+        }
     }
 
     @Override
