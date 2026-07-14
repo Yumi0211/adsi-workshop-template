@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { TimeRecord, ClockType } from "@/types/time-record";
 import type { AttendanceSummary } from "@/types/attendance";
+import type { AlertItem } from "@/types/alert";
 
 const CLOCK_TYPE_LABELS: Record<ClockType, string> = {
   CLOCK_IN: "出勤", CLOCK_OUT: "退勤", BREAK_START: "休憩開始", BREAK_END: "休憩終了",
@@ -26,14 +27,6 @@ function formatMinutes(minutes: number): string {
 function getTodayString(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-interface AlertItem {
-  id: number;
-  message: string;
-  type: string;
-  createdAt: string;
-  acknowledged: boolean;
 }
 
 export default function DashboardPage() {

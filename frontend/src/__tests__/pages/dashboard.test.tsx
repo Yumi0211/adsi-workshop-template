@@ -14,12 +14,9 @@ vi.mock("@/lib/api-client", () => ({
   withBasePath: (path: string) => path,
 }));
 
+const mockUseAuth = vi.fn();
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({
-    user: { employeeId: 1, name: "田中太郎", role: "EMPLOYEE", departments: [] },
-    isLoading: false,
-    isAuthenticated: true,
-  }),
+  useAuth: () => mockUseAuth(),
 }));
 
 const MOCK_TIME_RECORDS = [
@@ -34,9 +31,13 @@ const MOCK_MONTHLY = {
 
 const MOCK_ALERTS = { content: [{ id: 1, employeeId: 1, employeeName: "田中太郎", type: "OVERTIME_MONTHLY", message: "残業時間が30hを超えました", createdAt: "2026-07-14T10:00:00", acknowledged: false }], page: 0, size: 20, totalElements: 1 };
 
-describe("DashboardPage", () => {
+describe("DashboardPage (EMPLOYEE)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { employeeId: 1, name: "田中太郎", role: "EMPLOYEE", departments: [] },
+      isLoading: false, isAuthenticated: true, login: vi.fn(), logout: vi.fn(),
+    });
     mockGet.mockImplementation((path: string) => {
       if (path.includes("/time-records")) return Promise.resolve(MOCK_TIME_RECORDS);
       if (path.includes("/attendances/monthly")) return Promise.resolve(MOCK_MONTHLY);
@@ -75,6 +76,36 @@ describe("DashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "出勤" }));
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith("/api/v1/time-records", { type: "CLOCK_IN", source: "WEB" });
+    });
+  });
+
+  it("EMPLOYEE ロールではアラートが表示されない", async () => {
+    render(<DashboardPage />);
+    await waitFor(() => { expect(screen.getByRole("button", { name: "出勤" })).toBeInTheDocument(); });
+    expect(screen.queryByText("通知")).not.toBeInTheDocument();
+  });
+});
+
+describe("DashboardPage (ADMIN)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { employeeId: 1, name: "管理者", role: "ADMIN", departments: [] },
+      isLoading: false, isAuthenticated: true, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGet.mockImplementation((path: string) => {
+      if (path.includes("/time-records")) return Promise.resolve(MOCK_TIME_RECORDS);
+      if (path.includes("/attendances/monthly")) return Promise.resolve(MOCK_MONTHLY);
+      if (path.includes("/alerts")) return Promise.resolve(MOCK_ALERTS);
+      return Promise.resolve(null);
+    });
+  });
+
+  it("ADMIN ロールではアラート通知が表示される", async () => {
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByText("通知")).toBeInTheDocument();
+      expect(screen.getByText("残業時間が30hを超えました")).toBeInTheDocument();
     });
   });
 });

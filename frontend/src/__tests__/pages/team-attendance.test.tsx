@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import TeamAttendancePage from "@/app/(main)/team/attendance/page";
 
 const mockGet = vi.fn();
+const mockReplace = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: { get: (...args: unknown[]) => mockGet(...args) },
@@ -12,9 +13,13 @@ vi.mock("@/lib/api-client", () => ({
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { employeeId: 1, name: "承認者", role: "APPROVER", departments: [{ id: 1, name: "開発部", isPrimary: true }] },
-    isLoading: false,
-    isAuthenticated: true,
+    isLoading: false, isAuthenticated: true,
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => "/team/attendance",
 }));
 
 const MOCK_TEAM_ATTENDANCE = [

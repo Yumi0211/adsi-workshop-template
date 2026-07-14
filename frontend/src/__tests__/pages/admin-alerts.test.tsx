@@ -5,6 +5,7 @@ import AdminAlertsPage from "@/app/(main)/admin/alerts/page";
 
 const mockGet = vi.fn();
 const mockPut = vi.fn();
+const mockReplace = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
@@ -16,6 +17,11 @@ vi.mock("@/lib/api-client", () => ({
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { employeeId: 1, name: "管理者", role: "ADMIN", departments: [] }, isLoading: false, isAuthenticated: true }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => "/admin/alerts",
 }));
 
 const MOCK_ALERTS = {
@@ -52,7 +58,7 @@ describe("AdminAlertsPage", () => {
     });
   });
 
-  it("既に確認済みのアラートは確認済みバッジが表示される", async () => {
+  it("既に確認済みのアラートは対応済みバッジが表示される", async () => {
     render(<AdminAlertsPage />);
     await waitFor(() => {
       expect(screen.getByText("対応済み")).toBeInTheDocument();

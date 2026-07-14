@@ -1,24 +1,25 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { PaginatedResponse } from "@/types";
-
-interface AlertItem {
-  id: number;
-  employeeId: number;
-  employeeName: string;
-  type: string;
-  message: string;
-  createdAt: string;
-  acknowledged: boolean;
-}
+import type { AlertItem } from "@/types/alert";
 
 export default function AdminAlertsPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user && user.role !== "ADMIN") {
+      router.replace("/");
+    }
+  }, [user, router]);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -29,7 +30,9 @@ export default function AdminAlertsPage() {
     }
   }, []);
 
-  useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
+  useEffect(() => {
+    if (user?.role === "ADMIN") { fetchAlerts(); }
+  }, [user?.role, fetchAlerts]);
 
   const handleAcknowledge = async (id: number) => {
     setError("");
@@ -40,6 +43,8 @@ export default function AdminAlertsPage() {
       setError("確認済み処理に失敗しました");
     }
   };
+
+  if (user && user.role !== "ADMIN") return null;
 
   return (
     <div className="space-y-6">

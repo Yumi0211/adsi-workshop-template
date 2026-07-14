@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
@@ -22,13 +23,21 @@ function formatMinutes(minutes: number): string {
 
 export default function TeamAttendancePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [members, setMembers] = useState<TeamMemberAttendance[]>([]);
   const [error, setError] = useState("");
 
-  const departmentId = user?.departments?.[0]?.id;
+  useEffect(() => {
+    if (user && user.role === "EMPLOYEE") {
+      router.replace("/");
+    }
+  }, [user, router]);
+
+  const primaryDept = user?.departments?.find((d) => d.isPrimary);
+  const departmentId = primaryDept?.id ?? user?.departments?.[0]?.id;
 
   const fetchData = useCallback(async () => {
     if (!departmentId) return;
@@ -47,6 +56,8 @@ export default function TeamAttendancePage() {
 
   const handlePrevMonth = () => { if (month === 1) { setYear(year - 1); setMonth(12); } else { setMonth(month - 1); } };
   const handleNextMonth = () => { if (month === 12) { setYear(year + 1); setMonth(1); } else { setMonth(month + 1); } };
+
+  if (user && user.role === "EMPLOYEE") return null;
 
   return (
     <div className="space-y-6">
