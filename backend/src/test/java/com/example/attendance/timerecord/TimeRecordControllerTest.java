@@ -70,7 +70,8 @@ class TimeRecordControllerTest {
                 .andExpect(jsonPath("$.type").value("CLOCK_IN"))
                 .andExpect(jsonPath("$.source").value("WEB"))
                 .andExpect(jsonPath("$.recordDate").exists())
-                .andExpect(jsonPath("$.recordedAt").exists());
+                .andExpect(jsonPath("$.recordedAt").exists())
+                .andExpect(jsonPath("$.employeeId").doesNotExist());
     }
 
     @Test
@@ -105,6 +106,7 @@ class TimeRecordControllerTest {
     @WithMockUser(username = "tanaka@example.com")
     void create_invalidBody_returns400() throws Exception {
         createTestEmployee();
+
         String json = """
                 {
                     "type": null,
@@ -119,9 +121,9 @@ class TimeRecordControllerTest {
     }
 
     @Test
-    @DisplayName("指定日の打刻一覧取得で200が返る")
+    @DisplayName("指定日に打刻がある場合、時系列順にリストが返る")
     @WithMockUser(username = "tanaka@example.com")
-    void findByDate_returnsRecords() throws Exception {
+    void findByDate_withRecords_returnsInTimeOrder() throws Exception {
         var emp = createTestEmployee();
 
         timeRecordRepository.save(TimeRecord.builder()
@@ -136,7 +138,22 @@ class TimeRecordControllerTest {
                         .param("date", "2026-07-14")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("CLOCK_IN"));
+                .andExpect(jsonPath("$[0].type").value("CLOCK_IN"))
+                .andExpect(jsonPath("$[0].employeeId").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("指定日に打刻データがない場合は空リストが返る")
+    @WithMockUser(username = "tanaka@example.com")
+    void findByDate_noRecords_returnsEmptyList() throws Exception {
+        createTestEmployee();
+
+        mockMvc.perform(get("/api/v1/time-records")
+                        .param("date", "2026-01-01")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test

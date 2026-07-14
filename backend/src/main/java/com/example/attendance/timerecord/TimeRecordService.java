@@ -8,7 +8,7 @@ import com.example.attendance.timerecord.dto.TimeRecordResponse;
 
 public interface TimeRecordService {
 
-    TimeRecordResponse create(Long employeeId, TimeRecordCreateRequest request);
+    TimeRecordResponse create(String email, TimeRecordCreateRequest request);
 
-    List<TimeRecordResponse> findByEmployeeIdAndDate(Long employeeId, LocalDate date);
+    List<TimeRecordResponse> findByDate(String email, LocalDate date);
 }

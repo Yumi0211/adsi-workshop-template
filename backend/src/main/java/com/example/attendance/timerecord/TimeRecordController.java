@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.attendance.employee.EmployeeRepository;
-import com.example.attendance.common.exception.ResourceNotFoundException;
 import com.example.attendance.timerecord.dto.TimeRecordCreateRequest;
 import com.example.attendance.timerecord.dto.TimeRecordResponse;
 
@@ -26,19 +24,16 @@ import jakarta.validation.Valid;
 public class TimeRecordController {
 
     private final TimeRecordService timeRecordService;
-    private final EmployeeRepository employeeRepository;
 
-    public TimeRecordController(TimeRecordService timeRecordService, EmployeeRepository employeeRepository) {
+    public TimeRecordController(TimeRecordService timeRecordService) {
         this.timeRecordService = timeRecordService;
-        this.employeeRepository = employeeRepository;
     }
 
     @PostMapping
     public ResponseEntity<TimeRecordResponse> create(
             @Valid @RequestBody TimeRecordCreateRequest request,
             Principal principal) {
-        Long employeeId = resolveEmployeeId(principal);
-        var response = timeRecordService.create(employeeId, request);
+        var response = timeRecordService.create(principal.getName(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -46,14 +41,7 @@ public class TimeRecordController {
     public ResponseEntity<List<TimeRecordResponse>> findByDate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             Principal principal) {
-        Long employeeId = resolveEmployeeId(principal);
-        var records = timeRecordService.findByEmployeeIdAndDate(employeeId, date);
+        var records = timeRecordService.findByDate(principal.getName(), date);
         return ResponseEntity.ok(records);
-    }
-
-    private Long resolveEmployeeId(Principal principal) {
-        var employee = employeeRepository.findByEmail(principal.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("Employee", principal.getName()));
-        return employee.getId();
     }
 }

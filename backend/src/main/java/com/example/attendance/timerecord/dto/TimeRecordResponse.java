@@ -8,7 +8,6 @@ import com.example.attendance.common.enums.TimeRecordType;
 
 public record TimeRecordResponse(
         Long id,
-        Long employeeId,
         LocalDate recordDate,
         TimeRecordType type,
         OffsetDateTime recordedAt,
