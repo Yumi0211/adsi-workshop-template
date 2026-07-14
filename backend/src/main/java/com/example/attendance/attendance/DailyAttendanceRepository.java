@@ -24,4 +24,11 @@ public interface DailyAttendanceRepository extends JpaRepository<DailyAttendance
             @Param("employeeIds") List<Long> employeeIds,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT da FROM DailyAttendance da " +
+            "WHERE da.attendanceDate >= :startDate AND da.attendanceDate <= :endDate " +
+            "ORDER BY da.employeeId ASC, da.attendanceDate ASC")
+    List<DailyAttendance> findAllByDateRange(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }
