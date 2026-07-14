@@ -9,12 +9,16 @@ import java.util.function.Supplier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.example.attendance.common.enums.RequestStatus;
 import com.example.attendance.common.enums.RequestType;
 import com.example.attendance.common.exception.BusinessException;
 import com.example.attendance.employee.EmployeeRepository;
 import com.example.attendance.leave.dto.LeaveBalanceDetailResponse;
 import com.example.attendance.leave.dto.LeaveBalanceResponse;
+import com.example.attendance.leave.dto.LeaveDetail;
 import com.example.attendance.leave.dto.LeaveRequestCreateRequest;
 import com.example.attendance.leave.dto.LeaveRequestCreateRequest.LeaveType;
 import com.example.attendance.leave.dto.LeaveRequestResponse;
@@ -29,15 +33,18 @@ public class LeaveServiceImpl implements LeaveService {
     private final ApprovalRequestRepository approvalRequestRepository;
     private final EmployeeRepository employeeRepository;
     private final Supplier<LocalDate> todaySupplier;
+    private final ObjectMapper objectMapper;
 
     public LeaveServiceImpl(LeaveBalanceRepository leaveBalanceRepository,
                             ApprovalRequestRepository approvalRequestRepository,
                             EmployeeRepository employeeRepository,
-                            Supplier<LocalDate> todaySupplier) {
+                            Supplier<LocalDate> todaySupplier,
+                            ObjectMapper objectMapper) {
         this.leaveBalanceRepository = leaveBalanceRepository;
         this.approvalRequestRepository = approvalRequestRepository;
         this.employeeRepository = employeeRepository;
         this.todaySupplier = todaySupplier;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -94,8 +101,7 @@ public class LeaveServiceImpl implements LeaveService {
         var approverId = employeeRepository.findApproverIdByEmployeeId(employeeId)
                 .orElse(employeeId);
 
-        var detail = """
-                {"leaveDate":"%s","leaveType":"%s"}""".formatted(request.leaveDate(), request.leaveType().name());
+        var detail = serializeDetail(new LeaveDetail(request.leaveDate(), request.leaveType()));
 
         var approvalRequest = ApprovalRequest.builder()
                 .applicantId(employeeId)
@@ -144,22 +150,29 @@ public class LeaveServiceImpl implements LeaveService {
     }
 
     private LeaveRequestResponse toLeaveRequestResponse(ApprovalRequest request) {
-        var detail = request.getDetail();
-        var leaveDate = extractJsonField(detail, "leaveDate");
-        var leaveType = extractJsonField(detail, "leaveType");
+        var detail = deserializeDetail(request.getDetail());
         return new LeaveRequestResponse(
                 request.getId(),
                 request.getStatus().name(),
-                LocalDate.parse(leaveDate),
-                leaveType
+                detail.leaveDate(),
+                detail.leaveType().name()
         );
     }
 
-    private String extractJsonField(String json, String field) {
-        var key = "\"" + field + "\":\"";
-        int start = json.indexOf(key) + key.length();
-        int end = json.indexOf("\"", start);
-        return json.substring(start, end);
+    private String serializeDetail(LeaveDetail detail) {
+        try {
+            return objectMapper.writeValueAsString(detail);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize leave detail", e);
+        }
+    }
+
+    private LeaveDetail deserializeDetail(String json) {
+        try {
+            return objectMapper.readValue(json, LeaveDetail.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to deserialize leave detail", e);
+        }
     }
 
     static BigDecimal calculateGrantDays(int yearsOfService) {

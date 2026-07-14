@@ -11,6 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import com.example.attendance.common.enums.RequestType;
 import com.example.attendance.common.exception.BusinessException;
 import com.example.attendance.employee.Employee;
@@ -41,7 +44,9 @@ class LeaveServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new LeaveServiceImpl(leaveBalanceRepository, approvalRequestRepository, employeeRepository, () -> TODAY);
+        var objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        service = new LeaveServiceImpl(leaveBalanceRepository, approvalRequestRepository, employeeRepository, () -> TODAY, objectMapper);
     }
 
     @Test
