@@ -34,14 +34,14 @@ public class LeaveBalance {
     @Column(name = "fiscal_year", nullable = false)
     private int fiscalYear;
 
-    @Column(name = "granted_days", nullable = false)
+    @Column(name = "granted_days", nullable = false, precision = 4, scale = 1)
     private BigDecimal grantedDays;
 
-    @Column(name = "used_days", nullable = false)
+    @Column(name = "used_days", nullable = false, precision = 4, scale = 1)
     @Builder.Default
     private BigDecimal usedDays = BigDecimal.ZERO;
 
-    @Column(name = "carried_over_days", nullable = false)
+    @Column(name = "carried_over_days", nullable = false, precision = 4, scale = 1)
     @Builder.Default
     private BigDecimal carriedOverDays = BigDecimal.ZERO;
 
@@ -61,4 +61,12 @@ public class LeaveBalance {
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private OffsetDateTime updatedAt = OffsetDateTime.now();
+
+    public BigDecimal getRemainingDays() {
+        return grantedDays.add(carriedOverDays).subtract(usedDays);
+    }
+
+    public boolean isExpired(LocalDate asOf) {
+        return !expiryDate.isAfter(asOf);
+    }
 }
