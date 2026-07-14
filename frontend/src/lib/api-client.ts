@@ -17,6 +17,15 @@ class ApiClientError extends Error {
   }
 }
 
+function isApiError(value: unknown): value is ApiError {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "status" in value &&
+    "detail" in value
+  );
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (response.status === 401) {
     throw new ApiClientError("認証エラー", 401);
@@ -27,16 +36,17 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
 
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as ApiError | null;
+    const errorBody: unknown = await response.json().catch(() => null);
+    const apiError = isApiError(errorBody) ? errorBody : undefined;
     throw new ApiClientError(
-      errorBody?.detail ?? "エラーが発生しました",
+      apiError?.detail ?? "エラーが発生しました",
       response.status,
-      errorBody ?? undefined
+      apiError
     );
   }
 
   if (response.status === 204) {
-    return undefined as T;
+    return undefined as unknown as T;
   }
 
   return response.json() as Promise<T>;
@@ -48,6 +58,7 @@ export const apiClient = {
     const response = await fetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
     });
     return handleResponse<T>(response);
   },
@@ -57,6 +68,7 @@ export const apiClient = {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
     return handleResponse<T>(response);
@@ -67,6 +79,7 @@ export const apiClient = {
     const response = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
     return handleResponse<T>(response);
@@ -77,6 +90,7 @@ export const apiClient = {
     const response = await fetch(url, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
     });
     return handleResponse<T>(response);
   },

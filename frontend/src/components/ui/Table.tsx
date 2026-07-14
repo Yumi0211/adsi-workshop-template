@@ -6,9 +6,10 @@ interface Column {
 interface TableProps {
   columns: Column[];
   data: Record<string, unknown>[];
+  rowKey?: string;
 }
 
-export function Table({ columns, data }: TableProps) {
+export function Table({ columns, data, rowKey }: TableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -26,7 +27,7 @@ export function Table({ columns, data }: TableProps) {
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {data.map((row, i) => (
-            <tr key={i}>
+            <tr key={rowKey ? String(row[rowKey]) : i}>
               {columns.map((col) => (
                 <td key={col.key} className="px-4 py-3 text-sm text-gray-900">
                   {String(row[col.key] ?? "")}
