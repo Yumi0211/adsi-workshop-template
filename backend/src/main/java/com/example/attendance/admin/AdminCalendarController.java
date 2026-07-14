@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,10 +21,13 @@ import com.example.attendance.admin.dto.WorkCalendarResponse;
 import com.example.attendance.admin.dto.WorkCalendarUpdateRequest;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 @RestController
 @RequestMapping("/api/v1/admin/calendars")
 @PreAuthorize("hasRole('ADMIN')")
+@Validated
 public class AdminCalendarController {
 
     private final WorkCalendarService workCalendarService;
@@ -33,7 +37,8 @@ public class AdminCalendarController {
     }
 
     @GetMapping
-    public ResponseEntity<List<WorkCalendarResponse>> getCalendars(@RequestParam int fiscalYear) {
+    public ResponseEntity<List<WorkCalendarResponse>> getCalendars(
+            @RequestParam @Min(1900) @Max(2100) int fiscalYear) {
         return ResponseEntity.ok(workCalendarService.findByFiscalYear(fiscalYear));
     }
 

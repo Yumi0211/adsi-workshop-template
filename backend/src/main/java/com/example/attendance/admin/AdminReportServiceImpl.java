@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -16,8 +17,10 @@ import com.example.attendance.admin.dto.OvertimeRecordResponse;
 import com.example.attendance.admin.dto.OvertimeReportResponse;
 import com.example.attendance.attendance.DailyAttendance;
 import com.example.attendance.attendance.DailyAttendanceRepository;
+import com.example.attendance.employee.Department;
 import com.example.attendance.employee.DepartmentRepository;
 import com.example.attendance.employee.Employee;
+import com.example.attendance.employee.EmployeeDepartment;
 import com.example.attendance.employee.EmployeeDepartmentRepository;
 import com.example.attendance.employee.EmployeeRepository;
 import com.example.attendance.leave.LeaveBalance;
@@ -74,11 +77,14 @@ public class AdminReportServiceImpl implements AdminReportService {
                         DailyAttendance::getEmployeeId,
                         Collectors.summingInt(DailyAttendance::getOvertimeMinutes)));
 
+        List<Long> employeeIds = employees.stream().map(Employee::getId).toList();
+        Map<Long, String> deptNameByEmployeeId = buildDepartmentNameMap(employeeIds);
+
         List<OvertimeRecordResponse> records = employees.stream()
                 .map(emp -> {
                     int monthlyOvertime = monthlyOvertimeByEmployee.getOrDefault(emp.getId(), 0);
                     int yearlyOvertime = yearlyOvertimeByEmployee.getOrDefault(emp.getId(), 0);
-                    String deptName = resolveDepartmentName(emp.getId());
+                    String deptName = deptNameByEmployeeId.getOrDefault(emp.getId(), "");
                     return new OvertimeRecordResponse(
                             emp.getId(),
                             emp.getName(),
@@ -105,15 +111,22 @@ public class AdminReportServiceImpl implements AdminReportService {
                         LeaveBalance::getEmployeeId,
                         Collectors.reducing(BigDecimal.ZERO, LeaveBalance::getUsedDays, BigDecimal::add)));
 
-        List<LeaveObligationRecordResponse> records = employees.stream()
+        List<Long> underObligationIds = employees.stream()
                 .filter(emp -> {
                     BigDecimal used = usedDaysByEmployee.getOrDefault(emp.getId(), BigDecimal.ZERO);
                     return used.compareTo(OBLIGATION_DAYS) < 0;
                 })
+                .map(Employee::getId)
+                .toList();
+
+        Map<Long, String> deptNameByEmployeeId = buildDepartmentNameMap(underObligationIds);
+
+        List<LeaveObligationRecordResponse> records = employees.stream()
+                .filter(emp -> underObligationIds.contains(emp.getId()))
                 .map(emp -> {
                     BigDecimal used = usedDaysByEmployee.getOrDefault(emp.getId(), BigDecimal.ZERO);
                     BigDecimal remaining = OBLIGATION_DAYS.subtract(used);
-                    String deptName = resolveDepartmentName(emp.getId());
+                    String deptName = deptNameByEmployeeId.getOrDefault(emp.getId(), "");
                     return new LeaveObligationRecordResponse(
                             emp.getId(), emp.getName(), deptName, used, remaining);
                 })
@@ -122,17 +135,28 @@ public class AdminReportServiceImpl implements AdminReportService {
         return new LeaveObligationResponse(fiscalYear, records);
     }
 
-    private String resolveDepartmentName(Long employeeId) {
-        var memberships = employeeDepartmentRepository.findByEmployeeIdAndEndDateIsNull(employeeId);
-        if (memberships.isEmpty()) {
-            return "";
+    private Map<Long, String> buildDepartmentNameMap(List<Long> employeeIds) {
+        if (employeeIds.isEmpty()) {
+            return Map.of();
         }
-        var primaryMembership = memberships.stream()
-                .filter(m -> m.isPrimary())
-                .findFirst()
-                .orElse(memberships.get(0));
-        return departmentRepository.findById(primaryMembership.getDepartmentId())
-                .map(d -> d.getName())
-                .orElse("");
+        var memberships = employeeDepartmentRepository.findByEmployeeIdInAndEndDateIsNull(employeeIds);
+        Map<Long, EmployeeDepartment> primaryByEmployee = memberships.stream()
+                .collect(Collectors.toMap(
+                        EmployeeDepartment::getEmployeeId,
+                        Function.identity(),
+                        (a, b) -> a.isPrimary() ? a : b));
+
+        List<Long> deptIds = primaryByEmployee.values().stream()
+                .map(EmployeeDepartment::getDepartmentId)
+                .distinct()
+                .toList();
+
+        Map<Long, String> deptNameById = departmentRepository.findAllById(deptIds).stream()
+                .collect(Collectors.toMap(Department::getId, Department::getName));
+
+        return primaryByEmployee.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> deptNameById.getOrDefault(e.getValue().getDepartmentId(), "")));
     }
 }

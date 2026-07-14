@@ -135,6 +135,32 @@ class WorkCalendarServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    @Test
+    @DisplayName("無効なdayTypeで登録するとエラー")
+    void create_invalidDayType_throwsBusinessException() {
+        var request = new WorkCalendarCreateRequest(
+                LocalDate.of(2026, 12, 29), "INVALID_TYPE", "テスト", 2026);
+        when(workCalendarRepository.existsByCalendarDate(request.calendarDate()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("無効な日種別です");
+    }
+
+    @Test
+    @DisplayName("無効なdayTypeで更新するとエラー")
+    void update_invalidDayType_throwsBusinessException() {
+        var existing = buildCalendar(1L, LocalDate.of(2026, 1, 1), DayType.HOLIDAY, "元日");
+        when(workCalendarRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        var request = new WorkCalendarUpdateRequest("INVALID", "テスト");
+
+        assertThatThrownBy(() -> service.update(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("無効な日種別です");
+    }
+
     private WorkCalendar buildCalendar(Long id, LocalDate date, DayType dayType, String desc) {
         return WorkCalendar.builder()
                 .id(id)

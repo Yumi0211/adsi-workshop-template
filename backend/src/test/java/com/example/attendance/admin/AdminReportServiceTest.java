@@ -83,8 +83,7 @@ class AdminReportServiceTest {
                 eq(LocalDate.of(2026, 4, 1)), eq(LocalDate.of(2026, 7, 31))))
                 .thenReturn(yearlyAttendances);
 
-        stubDepartmentInfo(1L, "開発部");
-        stubDepartmentInfo(2L, "営業部");
+        stubBatchDepartmentInfo(List.of(1L, 2L), List.of("開発部", "営業部"));
 
         var result = service.getOvertimeReport(2026, 7);
 
@@ -116,7 +115,7 @@ class AdminReportServiceTest {
                 eq(LocalDate.of(2026, 4, 1)), eq(LocalDate.of(2026, 7, 31))))
                 .thenReturn(monthlyAttendances);
 
-        stubDepartmentInfo(1L, "開発部");
+        stubBatchDepartmentInfo(List.of(1L), List.of("開発部"));
 
         var result = service.getOvertimeReport(2026, 7);
 
@@ -141,7 +140,7 @@ class AdminReportServiceTest {
                 eq(LocalDate.of(2026, 4, 1)), eq(LocalDate.of(2026, 7, 31))))
                 .thenReturn(yearlyAttendances);
 
-        stubDepartmentInfo(1L, "開発部");
+        stubBatchDepartmentInfo(List.of(1L), List.of("開発部"));
 
         var result = service.getOvertimeReport(2026, 7);
 
@@ -161,7 +160,7 @@ class AdminReportServiceTest {
                 buildLeaveBalance(2L, 2025, new BigDecimal("6.0")));
         when(leaveBalanceRepository.findByFiscalYear(2025)).thenReturn(balances);
 
-        stubDepartmentInfo(1L, "開発部");
+        stubBatchDepartmentInfo(List.of(1L), List.of("開発部"));
 
         var result = service.getLeaveObligationReport(2025);
 
@@ -227,21 +226,25 @@ class AdminReportServiceTest {
                 .build();
     }
 
-    private void stubDepartmentInfo(Long employeeId, String deptName) {
-        var membership = EmployeeDepartment.builder()
-                .employeeId(employeeId)
-                .departmentId(employeeId * 10)
-                .primary(true)
-                .startDate(LocalDate.of(2020, 4, 1))
-                .build();
-        when(employeeDepartmentRepository.findByEmployeeIdAndEndDateIsNull(employeeId))
-                .thenReturn(List.of(membership));
-
-        var dept = Department.builder()
-                .id(employeeId * 10)
-                .name(deptName)
-                .build();
-        when(departmentRepository.findById(employeeId * 10))
-                .thenReturn(java.util.Optional.of(dept));
+    private void stubBatchDepartmentInfo(List<Long> employeeIds, List<String> deptNames) {
+        var memberships = new java.util.ArrayList<EmployeeDepartment>();
+        var departments = new java.util.ArrayList<Department>();
+        for (int i = 0; i < employeeIds.size(); i++) {
+            Long empId = employeeIds.get(i);
+            memberships.add(EmployeeDepartment.builder()
+                    .employeeId(empId)
+                    .departmentId(empId * 10)
+                    .primary(true)
+                    .startDate(LocalDate.of(2020, 4, 1))
+                    .build());
+            departments.add(Department.builder()
+                    .id(empId * 10)
+                    .name(deptNames.get(i))
+                    .build());
+        }
+        when(employeeDepartmentRepository.findByEmployeeIdInAndEndDateIsNull(any()))
+                .thenReturn(memberships);
+        when(departmentRepository.findAllById(any()))
+                .thenReturn(departments);
     }
 }
