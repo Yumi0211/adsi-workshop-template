@@ -8,5 +8,11 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  return <SessionProvider>{children}</SessionProvider>;
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+  return (
+    <SessionProvider basePath={`${basePath}/api/auth`}>
+      {children}
+    </SessionProvider>
+  );
 }
