@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,6 +28,12 @@ class EmployeeControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    @Autowired
+    private EmployeeDepartmentRepository employeeDepartmentRepository;
 
     @Autowired
     private DepartmentRepository departmentRepository;
@@ -94,5 +101,55 @@ class EmployeeControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("社員情報を更新できる")
+    @WithMockUser(roles = {"ADMIN"})
+    void update_validBody_returns200() throws Exception {
+        var dept = departmentRepository.save(Department.builder()
+                .name("営業課")
+                .level(com.example.attendance.common.enums.DepartmentLevel.SECTION)
+                .active(true)
+                .build());
+
+        var emp = employeeRepository.save(Employee.builder()
+                .employeeCode("EMP002").name("鈴木花子").email("suzuki@example.com")
+                .role(com.example.attendance.common.enums.Role.EMPLOYEE)
+                .hireDate(LocalDate.of(2024, 4, 1)).active(true).build());
+
+        employeeDepartmentRepository.save(EmployeeDepartment.builder()
+                .employeeId(emp.getId()).departmentId(dept.getId())
+                .primary(true).startDate(LocalDate.now()).build());
+
+        String json = """
+                {
+                    "name": "鈴木花子（更新）",
+                    "email": "suzuki-new@example.com",
+                    "role": "APPROVER",
+                    "departments": [{"departmentId": %d, "isPrimary": true}],
+                    "version": 0
+                }
+                """.formatted(dept.getId());
+
+        mockMvc.perform(put("/api/v1/admin/employees/{id}", emp.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("鈴木花子（更新）"))
+                .andExpect(jsonPath("$.role").value("APPROVER"));
+    }
+
+    @Test
+    @DisplayName("社員を無効化できる")
+    @WithMockUser(roles = {"ADMIN"})
+    void deactivate_existingEmployee_returns200() throws Exception {
+        var emp = employeeRepository.save(Employee.builder()
+                .employeeCode("EMP003").name("山田太郎").email("yamada@example.com")
+                .role(com.example.attendance.common.enums.Role.EMPLOYEE)
+                .hireDate(LocalDate.of(2024, 4, 1)).active(true).build());
+
+        mockMvc.perform(put("/api/v1/admin/employees/{id}/deactivate", emp.getId()))
+                .andExpect(status().isOk());
     }
 }

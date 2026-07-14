@@ -70,6 +70,28 @@ class DepartmentControllerTest {
     }
 
     @Test
+    @DisplayName("部門名を更新できる")
+    @WithMockUser(roles = {"ADMIN"})
+    void update_validBody_returns200() throws Exception {
+        var dept = departmentRepository.save(Department.builder()
+                .name("営業本部").level(DepartmentLevel.HEADQUARTERS).active(true).build());
+
+        String json = """
+                {
+                    "name": "営業本部（更新）",
+                    "parentId": null,
+                    "version": 0
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/admin/departments/{id}", dept.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("営業本部（更新）"));
+    }
+
+    @Test
     @DisplayName("配下社員がいる部門の無効化は400エラー")
     @WithMockUser(roles = {"ADMIN"})
     void deactivate_hasEmployees_returns400() throws Exception {

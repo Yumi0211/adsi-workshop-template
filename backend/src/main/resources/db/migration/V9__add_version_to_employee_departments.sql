@@ -1,0 +1,1 @@
+ALTER TABLE employee_departments ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

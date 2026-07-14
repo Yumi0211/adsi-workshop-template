@@ -8,6 +8,8 @@ public interface EmployeeDepartmentRepository extends JpaRepository<EmployeeDepa
 
     List<EmployeeDepartment> findByEmployeeIdAndEndDateIsNull(Long employeeId);
 
+    List<EmployeeDepartment> findByEmployeeIdInAndEndDateIsNull(List<Long> employeeIds);
+
     List<EmployeeDepartment> findByDepartmentIdAndEndDateIsNull(Long departmentId);
 
     boolean existsByDepartmentIdAndEndDateIsNull(Long departmentId);

@@ -60,10 +60,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional(readOnly = true)
     public List<EmployeeResponse> findAll() {
-        return employeeRepository.findAll().stream()
+        var employees = employeeRepository.findAll();
+        var employeeIds = employees.stream().map(Employee::getId).toList();
+        var allAssignments = employeeDepartmentRepository.findByEmployeeIdInAndEndDateIsNull(employeeIds);
+        var deptIds = allAssignments.stream().map(EmployeeDepartment::getDepartmentId).distinct().toList();
+        var deptMap = departmentRepository.findAllById(deptIds).stream()
+                .collect(java.util.stream.Collectors.toMap(Department::getId, Department::getName));
+
+        return employees.stream()
                 .map(emp -> {
-                    var assignments = employeeDepartmentRepository.findByEmployeeIdAndEndDateIsNull(emp.getId());
-                    return EmployeeResponse.from(emp, assignments, this::getDepartmentName);
+                    var assignments = allAssignments.stream()
+                            .filter(a -> a.getEmployeeId().equals(emp.getId()))
+                            .toList();
+                    return EmployeeResponse.from(emp, assignments, id -> deptMap.getOrDefault(id, "不明"));
                 })
                 .toList();
     }
@@ -86,8 +95,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee = employeeRepository.save(employee);
 
         var currentAssignments = employeeDepartmentRepository.findByEmployeeIdAndEndDateIsNull(id);
-        currentAssignments.forEach(a -> a.setEndDate(LocalDate.now()));
-        employeeDepartmentRepository.saveAll(currentAssignments);
+        employeeDepartmentRepository.deleteAll(currentAssignments);
+        employeeDepartmentRepository.flush();
 
         var newAssignments = saveAssignments(id, request.departments());
         return EmployeeResponse.from(employee, newAssignments, this::getDepartmentName);
