@@ -2,6 +2,7 @@ package com.example.attendance.approval;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -32,7 +33,6 @@ import com.example.attendance.timerecord.TimeRecordRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,7 +51,9 @@ class ApprovalServiceTest {
     @Mock
     private AttendanceCalculationService attendanceCalculationService;
 
+    private static final OffsetDateTime FIXED_NOW = OffsetDateTime.of(2026, 7, 14, 10, 0, 0, 0, ZoneOffset.ofHours(9));
     private final Supplier<LocalDate> todaySupplier = () -> LocalDate.of(2026, 7, 14);
+    private final Supplier<OffsetDateTime> nowSupplier = () -> FIXED_NOW;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private ApprovalServiceImpl service;
@@ -65,6 +67,7 @@ class ApprovalServiceTest {
                 dailyAttendanceRepository,
                 attendanceCalculationService,
                 todaySupplier,
+                nowSupplier,
                 objectMapper
         );
     }
@@ -97,10 +100,24 @@ class ApprovalServiceTest {
     }
 
     @Test
+    @DisplayName("打刻修正申請: 修正時刻が両方 null の場合はエラー")
+    void createTimeCorrection_bothNull_throwsException() {
+        var request = new TimeCorrectionCreateRequest(
+                LocalDate.of(2026, 7, 10), null, null, "理由"
+        );
+
+        assertThatThrownBy(() -> service.createTimeCorrection(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("修正後の出勤時刻または退勤時刻のいずれかは必須です");
+    }
+
+    @Test
     @DisplayName("打刻修正申請: 承認者が見つからない場合は例外")
     void createTimeCorrection_noApprover_throwsException() {
         var request = new TimeCorrectionCreateRequest(
-                LocalDate.of(2026, 7, 10), null, null, "理由"
+                LocalDate.of(2026, 7, 10),
+                OffsetDateTime.parse("2026-07-10T09:00:00+09:00"),
+                null, "理由"
         );
 
         when(employeeRepository.findApproverIdByEmployeeId(1L)).thenReturn(Optional.empty());
@@ -108,6 +125,39 @@ class ApprovalServiceTest {
         assertThatThrownBy(() -> service.createTimeCorrection(1L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("承認者が見つかりません");
+    }
+
+    @Test
+    @DisplayName("申請詳細: 申請者は自分の申請を閲覧できる")
+    void getRequestDetail_byApplicant_returnsDetail() {
+        var request = buildPendingRequest(10L, 20L, RequestType.TIME_CORRECTION);
+        when(approvalRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+
+        var result = service.getRequestDetail(10L, 1L);
+
+        assertThat(result.id()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("申請詳細: 承認者は担当申請を閲覧できる")
+    void getRequestDetail_byApprover_returnsDetail() {
+        var request = buildPendingRequest(10L, 20L, RequestType.TIME_CORRECTION);
+        when(approvalRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+
+        var result = service.getRequestDetail(20L, 1L);
+
+        assertThat(result.id()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("申請詳細: 無関係なユーザーは閲覧不可")
+    void getRequestDetail_byUnrelatedUser_throwsException() {
+        var request = buildPendingRequest(10L, 20L, RequestType.TIME_CORRECTION);
+        when(approvalRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+
+        assertThatThrownBy(() -> service.getRequestDetail(99L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("この申請を閲覧する権限がありません");
     }
 
     @Test
@@ -122,7 +172,7 @@ class ApprovalServiceTest {
         var result = service.approve(2L, 1L);
 
         assertThat(result.status()).isEqualTo("APPROVED");
-        assertThat(result.approvedAt()).isNotNull();
+        assertThat(result.approvedAt()).isEqualTo(FIXED_NOW);
     }
 
     @Test
@@ -243,6 +293,29 @@ class ApprovalServiceTest {
         assertThatThrownBy(() -> service.reject(2L, 1L, ""))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("却下理由は必須です");
+    }
+
+    @Test
+    @DisplayName("却下: 承認者以外は却下不可")
+    void reject_byNonApprover_throwsException() {
+        var request = buildPendingRequest(1L, 2L, RequestType.TIME_CORRECTION);
+        when(approvalRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+
+        assertThatThrownBy(() -> service.reject(3L, 1L, "理由"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("この申請の承認者ではありません");
+    }
+
+    @Test
+    @DisplayName("却下: PENDING 以外は却下不可")
+    void reject_nonPendingRequest_throwsException() {
+        var request = buildPendingRequest(1L, 2L, RequestType.TIME_CORRECTION);
+        request.setStatus(RequestStatus.APPROVED);
+        when(approvalRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+
+        assertThatThrownBy(() -> service.reject(2L, 1L, "理由"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("PENDING 状態の申請のみ却下できます");
     }
 
     @Test

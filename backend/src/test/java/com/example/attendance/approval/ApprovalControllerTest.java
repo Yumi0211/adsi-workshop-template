@@ -90,9 +90,10 @@ class ApprovalControllerTest {
                 LocalDate.of(2026, 7, 14), "{}", "理由", null, null
         );
 
-        when(approvalService.getRequestDetail(1L)).thenReturn(response);
+        when(approvalService.getRequestDetail(10L, 1L)).thenReturn(response);
 
-        mockMvc.perform(get("/api/v1/approvals/1"))
+        mockMvc.perform(get("/api/v1/approvals/1")
+                        .param("requesterId", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.detail").value("{}"));

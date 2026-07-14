@@ -19,6 +19,7 @@ import com.example.attendance.attendance.DailyAttendance;
 import com.example.attendance.attendance.DailyAttendanceRepository;
 import com.example.attendance.common.enums.RequestStatus;
 import com.example.attendance.common.enums.RequestType;
+import com.example.attendance.common.enums.TimeRecordType;
 import com.example.attendance.common.exception.BusinessException;
 import com.example.attendance.common.exception.ResourceNotFoundException;
 import com.example.attendance.employee.EmployeeRepository;
@@ -35,6 +36,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     private final DailyAttendanceRepository dailyAttendanceRepository;
     private final AttendanceCalculationService attendanceCalculationService;
     private final Supplier<LocalDate> todaySupplier;
+    private final Supplier<OffsetDateTime> nowSupplier;
     private final ObjectMapper objectMapper;
 
     public ApprovalServiceImpl(ApprovalRequestRepository approvalRequestRepository,
@@ -43,6 +45,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                                DailyAttendanceRepository dailyAttendanceRepository,
                                AttendanceCalculationService attendanceCalculationService,
                                Supplier<LocalDate> todaySupplier,
+                               Supplier<OffsetDateTime> nowSupplier,
                                ObjectMapper objectMapper) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.employeeRepository = employeeRepository;
@@ -50,17 +53,22 @@ public class ApprovalServiceImpl implements ApprovalService {
         this.dailyAttendanceRepository = dailyAttendanceRepository;
         this.attendanceCalculationService = attendanceCalculationService;
         this.todaySupplier = todaySupplier;
+        this.nowSupplier = nowSupplier;
         this.objectMapper = objectMapper;
     }
 
     @Override
     public ApprovalRequestResponse createTimeCorrection(Long applicantId, TimeCorrectionCreateRequest request) {
+        if (request.correctedClockIn() == null && request.correctedClockOut() == null) {
+            throw new BusinessException("修正後の出勤時刻または退勤時刻のいずれかは必須です");
+        }
+
         var approverId = employeeRepository.findApproverIdByEmployeeId(applicantId)
                 .orElseThrow(() -> new BusinessException("承認者が見つかりません"));
 
         var detail = serializeDetail(request);
 
-        var approvalRequest = ApprovalRequest.builder()
+        var saved = approvalRequestRepository.save(ApprovalRequest.builder()
                 .applicantId(applicantId)
                 .approverId(approverId)
                 .type(RequestType.TIME_CORRECTION)
@@ -68,10 +76,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                 .requestDate(todaySupplier.get())
                 .detail(detail)
                 .reason(request.reason())
-                .build();
+                .build());
 
-        approvalRequest = approvalRequestRepository.save(approvalRequest);
-        return ApprovalRequestResponse.from(approvalRequest);
+        return ApprovalRequestResponse.from(saved);
     }
 
     @Override
@@ -86,9 +93,14 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     @Transactional(readOnly = true)
-    public ApprovalRequestDetailResponse getRequestDetail(Long requestId) {
+    public ApprovalRequestDetailResponse getRequestDetail(Long requesterId, Long requestId) {
         var request = approvalRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("ApprovalRequest", requestId));
+
+        if (!request.getApplicantId().equals(requesterId) && !request.getApproverId().equals(requesterId)) {
+            throw new BusinessException("この申請を閲覧する権限がありません");
+        }
+
         return ApprovalRequestDetailResponse.from(request);
     }
 
@@ -100,13 +112,13 @@ public class ApprovalServiceImpl implements ApprovalService {
         validateApproval(approverId, request);
 
         request.setStatus(RequestStatus.APPROVED);
-        request.setApprovedAt(OffsetDateTime.now());
-        request.setUpdatedAt(OffsetDateTime.now());
-        request = approvalRequestRepository.save(request);
+        request.setApprovedAt(nowSupplier.get());
+        request.setUpdatedAt(nowSupplier.get());
+        var saved = approvalRequestRepository.save(request);
 
-        applySideEffect(request);
+        applySideEffect(saved);
 
-        return ApprovalRequestResponse.from(request);
+        return ApprovalRequestResponse.from(saved);
     }
 
     @Override
@@ -118,19 +130,14 @@ public class ApprovalServiceImpl implements ApprovalService {
         var request = approvalRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("ApprovalRequest", requestId));
 
-        if (request.getStatus() != RequestStatus.PENDING) {
-            throw new BusinessException("PENDING 状態の申請のみ却下できます");
-        }
-        if (!request.getApproverId().equals(approverId)) {
-            throw new BusinessException("この申請の承認者ではありません");
-        }
+        validateRejection(approverId, request);
 
         request.setStatus(RequestStatus.REJECTED);
         request.setRejectionReason(rejectionReason);
-        request.setUpdatedAt(OffsetDateTime.now());
-        request = approvalRequestRepository.save(request);
+        request.setUpdatedAt(nowSupplier.get());
+        var saved = approvalRequestRepository.save(request);
 
-        return ApprovalRequestResponse.from(request);
+        return ApprovalRequestResponse.from(saved);
     }
 
     @Override
@@ -155,6 +162,15 @@ public class ApprovalServiceImpl implements ApprovalService {
         }
     }
 
+    private void validateRejection(Long approverId, ApprovalRequest request) {
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new BusinessException("PENDING 状態の申請のみ却下できます");
+        }
+        if (!request.getApproverId().equals(approverId)) {
+            throw new BusinessException("この申請の承認者ではありません");
+        }
+    }
+
     private void applySideEffect(ApprovalRequest request) {
         switch (request.getType()) {
             case TIME_CORRECTION -> applyTimeCorrectionSideEffect(request);
@@ -171,28 +187,24 @@ public class ApprovalServiceImpl implements ApprovalService {
         var records = timeRecordRepository
                 .findByEmployeeIdAndRecordDateOrderByRecordedAtAsc(employeeId, targetDate);
 
-        if (correction.correctedClockIn() != null) {
-            records.stream()
-                    .filter(r -> r.getType() == com.example.attendance.common.enums.TimeRecordType.CLOCK_IN)
-                    .findFirst()
-                    .ifPresent(r -> {
-                        r.setRecordedAt(correction.correctedClockIn());
-                        timeRecordRepository.save(r);
-                    });
-        }
-
-        if (correction.correctedClockOut() != null) {
-            records.stream()
-                    .filter(r -> r.getType() == com.example.attendance.common.enums.TimeRecordType.CLOCK_OUT)
-                    .findFirst()
-                    .ifPresent(r -> {
-                        r.setRecordedAt(correction.correctedClockOut());
-                        timeRecordRepository.save(r);
-                    });
-        }
+        updateTimeRecord(records, TimeRecordType.CLOCK_IN, correction.correctedClockIn());
+        updateTimeRecord(records, TimeRecordType.CLOCK_OUT, correction.correctedClockOut());
 
         DailyAttendance recalculated = attendanceCalculationService.calculate(employeeId, targetDate);
         dailyAttendanceRepository.save(recalculated);
+    }
+
+    private void updateTimeRecord(List<TimeRecord> records, TimeRecordType type, OffsetDateTime correctedTime) {
+        if (correctedTime == null) {
+            return;
+        }
+        records.stream()
+                .filter(r -> r.getType() == type)
+                .findFirst()
+                .ifPresent(r -> {
+                    r.setRecordedAt(correctedTime);
+                    timeRecordRepository.save(r);
+                });
     }
 
     private String serializeDetail(Object detail) {
@@ -205,11 +217,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private TimeCorrectionCreateRequest deserializeTimeCorrectionDetail(String json) {
         try {
-            var node = objectMapper.readTree(json);
-            if (node.isTextual()) {
-                return objectMapper.readValue(node.textValue(), TimeCorrectionCreateRequest.class);
-            }
-            return objectMapper.treeToValue(node, TimeCorrectionCreateRequest.class);
+            return objectMapper.readValue(json, TimeCorrectionCreateRequest.class);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize time correction detail", e);
         }
