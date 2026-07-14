@@ -14,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import com.example.attendance.approval.ApprovalRequest;
+import com.example.attendance.approval.ApprovalRequestRepository;
 import com.example.attendance.common.enums.RequestType;
 import com.example.attendance.common.exception.BusinessException;
 import com.example.attendance.employee.Employee;

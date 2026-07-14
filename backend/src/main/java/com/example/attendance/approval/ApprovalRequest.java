@@ -1,4 +1,4 @@
-package com.example.attendance.leave;
+package com.example.attendance.approval;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

@@ -13,4 +13,6 @@ public interface LeaveBalanceRepository extends JpaRepository<LeaveBalance, Long
 
     @Query("SELECT lb FROM LeaveBalance lb WHERE lb.employeeId = :employeeId AND lb.expiryDate > :asOf")
     List<LeaveBalance> findActiveByEmployeeId(@Param("employeeId") Long employeeId, @Param("asOf") LocalDate asOf);
+
+    List<LeaveBalance> findByFiscalYear(int fiscalYear);
 }

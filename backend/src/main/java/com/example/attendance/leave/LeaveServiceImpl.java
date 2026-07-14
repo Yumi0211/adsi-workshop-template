@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.example.attendance.approval.ApprovalRequest;
+import com.example.attendance.approval.ApprovalRequestRepository;
 import com.example.attendance.common.enums.RequestStatus;
 import com.example.attendance.common.enums.RequestType;
 import com.example.attendance.common.exception.BusinessException;
