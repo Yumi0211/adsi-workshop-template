@@ -64,4 +64,31 @@ describe("CorrectionsNewPage", () => {
     });
     expect(mockPost).not.toHaveBeenCalled();
   });
+
+  it("申請成功後に成功メッセージが表示される", async () => {
+    const user = userEvent.setup();
+    render(<CorrectionsNewPage />);
+
+    await user.type(screen.getByLabelText("対象日"), "2026-07-10");
+    await user.type(screen.getByLabelText("理由"), "打刻忘れ");
+    await user.click(screen.getByRole("button", { name: "申請" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("申請を送信しました")).toBeInTheDocument();
+    });
+  });
+
+  it("API エラー時にエラーメッセージが表示される", async () => {
+    mockPost.mockRejectedValue(new Error("API error"));
+    const user = userEvent.setup();
+    render(<CorrectionsNewPage />);
+
+    await user.type(screen.getByLabelText("対象日"), "2026-07-10");
+    await user.type(screen.getByLabelText("理由"), "打刻忘れ");
+    await user.click(screen.getByRole("button", { name: "申請" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("打刻修正申請に失敗しました")).toBeInTheDocument();
+    });
+  });
 });

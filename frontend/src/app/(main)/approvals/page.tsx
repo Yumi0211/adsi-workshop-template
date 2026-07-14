@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import type { ApprovalRequest } from "@/types/approval";
 
 export default function ApprovalsPage() {
@@ -13,11 +14,11 @@ export default function ApprovalsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [error, setError] = useState("");
+  const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
-    if (user && user.role === "EMPLOYEE") {
-      router.replace("/");
-    }
+    if (user && user.role === "EMPLOYEE") { router.replace("/"); }
   }, [user, router]);
 
   const fetchPending = useCallback(async () => {
@@ -43,10 +44,19 @@ export default function ApprovalsPage() {
     }
   };
 
-  const handleReject = async (id: number) => {
+  const openRejectModal = (id: number) => {
+    setRejectTargetId(id);
+    setRejectionReason("");
+  };
+
+  const handleReject = async () => {
+    if (!rejectTargetId) return;
+    if (!rejectionReason.trim()) { setError("却下理由を入力してください"); return; }
     setError("");
     try {
-      await apiClient.put(`/api/v1/approvals/${id}/reject`, { rejectionReason: "" });
+      await apiClient.put(`/api/v1/approvals/${rejectTargetId}/reject`, { rejectionReason });
+      setRejectTargetId(null);
+      setRejectionReason("");
       await fetchPending();
     } catch {
       setError("却下に失敗しました");
@@ -75,7 +85,7 @@ export default function ApprovalsPage() {
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <Button onClick={() => handleApprove(req.id)} className="text-xs px-3 py-1">承認</Button>
-                    <Button variant="danger" onClick={() => handleReject(req.id)} className="text-xs px-3 py-1">却下</Button>
+                    <Button variant="danger" onClick={() => openRejectModal(req.id)} className="text-xs px-3 py-1">却下</Button>
                   </div>
                 </div>
               </li>
@@ -83,6 +93,25 @@ export default function ApprovalsPage() {
           </ul>
         )}
       </Card>
+
+      <Modal open={rejectTargetId !== null} onClose={() => setRejectTargetId(null)} title="却下理由">
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="reject-reason" className="text-sm font-medium text-gray-700">理由</label>
+            <textarea
+              id="reject-reason"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={3}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setRejectTargetId(null)}>キャンセル</Button>
+            <Button variant="danger" onClick={handleReject}>却下する</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

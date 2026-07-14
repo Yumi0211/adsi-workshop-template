@@ -42,6 +42,21 @@ describe("MyRequestsPage", () => {
     });
   });
 
+  it("却下理由が表示される", async () => {
+    render(<MyRequestsPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/繁忙期のため/)).toBeInTheDocument();
+    });
+  });
+
+  it("空リスト時に適切なメッセージが表示される", async () => {
+    mockGet.mockResolvedValue([]);
+    render(<MyRequestsPage />);
+    await waitFor(() => {
+      expect(screen.getByText("申請はありません")).toBeInTheDocument();
+    });
+  });
+
   it("API エラー時にエラーメッセージが表示される", async () => {
     mockGet.mockRejectedValue(new Error("API error"));
     render(<MyRequestsPage />);

@@ -55,16 +55,41 @@ describe("ApprovalsPage", () => {
     });
   });
 
-  it("却下ボタンクリックで reject API が呼ばれる", async () => {
-    mockPut.mockResolvedValue({ id: 2, status: "REJECTED", rejectionReason: "理由" });
+  it("却下ボタンクリックで理由入力モーダルが開く", async () => {
     const user = userEvent.setup();
     render(<ApprovalsPage />);
-    await waitFor(() => { expect(screen.getByText("山田太郎")).toBeInTheDocument(); });
-    const rejectButtons = screen.getAllByRole("button", { name: "却下" });
-    await user.click(rejectButtons[0]);
+    await waitFor(() => { expect(screen.getByText("鈴木花子")).toBeInTheDocument(); });
+    await user.click(screen.getAllByRole("button", { name: "却下" })[0]);
     await waitFor(() => {
-      expect(mockPut).toHaveBeenCalledWith("/api/v1/approvals/1/reject", expect.any(Object));
+      expect(screen.getByText("却下理由")).toBeInTheDocument();
+      expect(screen.getByLabelText("理由")).toBeInTheDocument();
     });
+  });
+
+  it("却下理由入力後に reject API が呼ばれる", async () => {
+    const user = userEvent.setup();
+    render(<ApprovalsPage />);
+    await waitFor(() => { expect(screen.getByText("鈴木花子")).toBeInTheDocument(); });
+    await user.click(screen.getAllByRole("button", { name: "却下" })[0]);
+    await waitFor(() => { expect(screen.getByLabelText("理由")).toBeInTheDocument(); });
+    await user.type(screen.getByLabelText("理由"), "繁忙期のため");
+    await user.click(screen.getByRole("button", { name: "却下する" }));
+    await waitFor(() => {
+      expect(mockPut).toHaveBeenCalledWith("/api/v1/approvals/1/reject", { rejectionReason: "繁忙期のため" });
+    });
+  });
+
+  it("却下理由未入力ではエラーが表示される", async () => {
+    const user = userEvent.setup();
+    render(<ApprovalsPage />);
+    await waitFor(() => { expect(screen.getByText("鈴木花子")).toBeInTheDocument(); });
+    await user.click(screen.getAllByRole("button", { name: "却下" })[0]);
+    await waitFor(() => { expect(screen.getByRole("button", { name: "却下する" })).toBeInTheDocument(); });
+    await user.click(screen.getByRole("button", { name: "却下する" }));
+    await waitFor(() => {
+      expect(screen.getByText("却下理由を入力してください")).toBeInTheDocument();
+    });
+    expect(mockPut).not.toHaveBeenCalled();
   });
 
   it("API エラー時にエラーメッセージが表示される", async () => {
@@ -72,6 +97,14 @@ describe("ApprovalsPage", () => {
     render(<ApprovalsPage />);
     await waitFor(() => {
       expect(screen.getByText("承認依頼一覧の取得に失敗しました")).toBeInTheDocument();
+    });
+  });
+
+  it("空リスト時に適切なメッセージが表示される", async () => {
+    mockGet.mockResolvedValue([]);
+    render(<ApprovalsPage />);
+    await waitFor(() => {
+      expect(screen.getByText("未処理の承認依頼はありません")).toBeInTheDocument();
     });
   });
 });
