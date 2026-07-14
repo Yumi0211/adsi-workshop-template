@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 public record LeaveRequestCreateRequest(
         @NotNull LocalDate leaveDate,
         @NotNull LeaveType leaveType,
-        String reason
+        @jakarta.validation.constraints.Size(max = 500) String reason
 ) {
     public enum LeaveType {
         FULL, HALF_AM, HALF_PM
