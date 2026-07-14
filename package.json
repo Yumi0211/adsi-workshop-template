@@ -1,0 +1,11 @@
+{
+  "name": "attendance-system",
+  "private": true,
+  "scripts": {
+    "setup": "cd backend && ./gradlew build -x test",
+    "boot": "cd backend && ./gradlew bootRun --args='--spring.profiles.active=local'",
+    "boot:stop": "pkill -f 'attendance.*spring.profiles.active' || true",
+    "check:backend": "cd backend && ./gradlew test",
+    "clean": "cd backend && ./gradlew clean"
+  }
+}
