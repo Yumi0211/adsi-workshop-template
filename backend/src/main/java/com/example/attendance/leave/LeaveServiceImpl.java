@@ -169,7 +169,11 @@ public class LeaveServiceImpl implements LeaveService {
 
     private LeaveDetail deserializeDetail(String json) {
         try {
-            return objectMapper.readValue(json, LeaveDetail.class);
+            var node = objectMapper.readTree(json);
+            if (node.isTextual()) {
+                return objectMapper.readValue(node.textValue(), LeaveDetail.class);
+            }
+            return objectMapper.treeToValue(node, LeaveDetail.class);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize leave detail", e);
         }
