@@ -11,6 +11,7 @@ sleep 1
 # 環境変数
 export SAGEMAKER=1
 export NEXT_PUBLIC_BASE_PATH="/codeeditor/default/absports/3000"
+export NEXT_PUBLIC_DEV_AUTH_BYPASS=true
 export NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-dev-secret}"
 
 # Next.js 起動（dev モード）
