@@ -32,6 +32,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/absports/8080/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(basic -> {})
