@@ -8,7 +8,6 @@ import java.time.ZoneOffset;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.attendance.attendance.DailyAttendance;
 import com.example.attendance.attendance.DailyAttendanceRepository;
 import com.example.attendance.common.enums.AlertType;
 
@@ -35,16 +34,12 @@ public class IntervalCheckServiceImpl implements IntervalCheckService {
         var attendances = dailyAttendanceRepository.findByEmployeeIdAndMonth(
                 employeeId, yesterday, date);
 
-        DailyAttendance yesterdayRecord = null;
-        DailyAttendance todayRecord = null;
-
-        for (var a : attendances) {
-            if (a.getAttendanceDate().equals(yesterday)) {
-                yesterdayRecord = a;
-            } else if (a.getAttendanceDate().equals(date)) {
-                todayRecord = a;
-            }
-        }
+        var yesterdayRecord = attendances.stream()
+                .filter(a -> a.getAttendanceDate().equals(yesterday))
+                .findFirst().orElse(null);
+        var todayRecord = attendances.stream()
+                .filter(a -> a.getAttendanceDate().equals(date))
+                .findFirst().orElse(null);
 
         if (yesterdayRecord == null || todayRecord == null) {
             return;

@@ -38,6 +38,8 @@ class OvertimeAlertServiceTest {
 
     private static final Long EMPLOYEE_ID = 1L;
     private static final ZoneOffset JST = ZoneOffset.ofHours(9);
+    private static final int OVER_MONTHLY_LIMIT_MINUTES = 45 * 60 + 1;
+    private static final int OVER_YEARLY_LIMIT_MINUTES = 360 * 60 + 1;
 
     @BeforeEach
     void setUp() {
@@ -48,11 +50,7 @@ class OvertimeAlertServiceTest {
     @DisplayName("月45h超過: アラートが生成される")
     void checkMonthlyOvertime_over45h_createsAlert() {
         var attendances = List.of(
-                buildAttendance(LocalDate.of(2026, 7, 1), 600),
-                buildAttendance(LocalDate.of(2026, 7, 2), 600),
-                buildAttendance(LocalDate.of(2026, 7, 3), 600),
-                buildAttendance(LocalDate.of(2026, 7, 4), 600),
-                buildAttendance(LocalDate.of(2026, 7, 5), 600)
+                buildAttendance(LocalDate.of(2026, 7, 1), OVER_MONTHLY_LIMIT_MINUTES)
         );
 
         when(dailyAttendanceRepository.findByEmployeeIdAndMonth(
@@ -92,7 +90,7 @@ class OvertimeAlertServiceTest {
     @DisplayName("月45h超過でも重複アラートは生成されない")
     void checkMonthlyOvertime_duplicateAlert_notCreated() {
         var attendances = List.of(
-                buildAttendance(LocalDate.of(2026, 7, 1), 2701)
+                buildAttendance(LocalDate.of(2026, 7, 1), OVER_MONTHLY_LIMIT_MINUTES)
         );
 
         when(dailyAttendanceRepository.findByEmployeeIdAndMonth(
@@ -111,7 +109,7 @@ class OvertimeAlertServiceTest {
     @DisplayName("年360h超過: アラートが生成される")
     void checkYearlyOvertime_over360h_createsAlert() {
         var attendances = List.of(
-                buildAttendance(LocalDate.of(2026, 4, 1), 21601)
+                buildAttendance(LocalDate.of(2026, 4, 1), OVER_YEARLY_LIMIT_MINUTES)
         );
 
         when(dailyAttendanceRepository.findByEmployeeIdAndMonth(

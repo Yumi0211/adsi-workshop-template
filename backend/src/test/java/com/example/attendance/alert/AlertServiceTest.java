@@ -22,6 +22,7 @@ import com.example.attendance.employee.EmployeeRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,8 +58,8 @@ class AlertServiceTest {
 
         when(alertRepository.findByEmployeeIdOrderByCreatedAtDesc(EMPLOYEE_ID))
                 .thenReturn(List.of(alert));
-        when(employeeRepository.findById(EMPLOYEE_ID))
-                .thenReturn(Optional.of(Employee.builder().id(EMPLOYEE_ID).name("田中太郎").build()));
+        when(employeeRepository.findAllById(anyList()))
+                .thenReturn(List.of(Employee.builder().id(EMPLOYEE_ID).name("田中太郎").build()));
 
         var result = service.getMyAlerts(EMPLOYEE_ID);
 
@@ -81,8 +82,8 @@ class AlertServiceTest {
 
         var page = new PageImpl<>(List.of(alert), PageRequest.of(0, 20), 1);
         when(alertRepository.findAllByOrderByCreatedAtDesc(any())).thenReturn(page);
-        when(employeeRepository.findById(EMPLOYEE_ID))
-                .thenReturn(Optional.of(Employee.builder().id(EMPLOYEE_ID).name("田中太郎").build()));
+        when(employeeRepository.findAllById(anyList()))
+                .thenReturn(List.of(Employee.builder().id(EMPLOYEE_ID).name("田中太郎").build()));
 
         var result = service.getAllAlerts(0, 20);
 
@@ -105,8 +106,8 @@ class AlertServiceTest {
 
         when(alertRepository.findById(1L)).thenReturn(Optional.of(alert));
         when(alertRepository.save(any(Alert.class))).thenReturn(alert);
-        when(employeeRepository.findById(EMPLOYEE_ID))
-                .thenReturn(Optional.of(Employee.builder().id(EMPLOYEE_ID).name("田中太郎").build()));
+        when(employeeRepository.findAllById(anyList()))
+                .thenReturn(List.of(Employee.builder().id(EMPLOYEE_ID).name("田中太郎").build()));
 
         var result = service.acknowledge(1L);
 

@@ -1,6 +1,7 @@
 package com.example.attendance.alert;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import com.example.attendance.common.enums.AlertType;
 
@@ -11,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,10 +42,16 @@ public class Alert {
     private String message;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    @Builder.Default
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    private OffsetDateTime createdAt;
 
     @Column(nullable = false)
     @Builder.Default
     private boolean acknowledged = false;
+
+    @PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now(ZoneOffset.ofHours(9));
+        }
+    }
 }

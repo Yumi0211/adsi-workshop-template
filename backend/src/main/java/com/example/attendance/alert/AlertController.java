@@ -17,6 +17,9 @@ import com.example.attendance.alert.dto.AlertPageResponse;
 import com.example.attendance.alert.dto.AlertResponse;
 import com.example.attendance.employee.EmployeeService;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 @RestController
 @RequestMapping("/api/v1")
 public class AlertController {
@@ -40,15 +43,15 @@ public class AlertController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/alerts")
     public ResponseEntity<AlertPageResponse> getAllAlerts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         var response = alertService.getAllAlerts(page, size);
         return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/admin/alerts/{id}/acknowledge")
-    public ResponseEntity<AlertResponse> acknowledge(@PathVariable Long id) {
+    public ResponseEntity<AlertResponse> acknowledge(@PathVariable @Min(1) Long id) {
         var response = alertService.acknowledge(id);
         return ResponseEntity.ok(response);
     }
