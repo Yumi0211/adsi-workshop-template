@@ -28,53 +28,34 @@ export default function AttendancePage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [data, setData] = useState<MonthlyAttendance | null>(null);
+  const [error, setError] = useState("");
 
   const fetchData = useCallback(async () => {
-    const result = await apiClient.get<MonthlyAttendance>(
-      `/api/v1/attendances/monthly?year=${year}&month=${month}`
-    );
-    setData(result);
+    setError("");
+    try {
+      const result = await apiClient.get<MonthlyAttendance>(`/api/v1/attendances/monthly?year=${year}&month=${month}`);
+      setData(result);
+    } catch {
+      setError("勤怠データの取得に失敗しました");
+    }
   }, [year, month]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handlePrevMonth = () => {
-    if (month === 1) {
-      setYear(year - 1);
-      setMonth(12);
-    } else {
-      setMonth(month - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (month === 12) {
-      setYear(year + 1);
-      setMonth(1);
-    } else {
-      setMonth(month + 1);
-    }
-  };
+  const handlePrevMonth = () => { if (month === 1) { setYear(year - 1); setMonth(12); } else { setMonth(month - 1); } };
+  const handleNextMonth = () => { if (month === 12) { setYear(year + 1); setMonth(1); } else { setMonth(month + 1); } };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">月次勤怠</h2>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={handlePrevMonth}>
-            前月
-          </Button>
-          <span className="text-sm font-medium text-gray-700">
-            {year}年{month}月
-          </span>
-          <Button variant="secondary" onClick={handleNextMonth}>
-            次月
-          </Button>
+          <Button variant="secondary" onClick={handlePrevMonth}>前月</Button>
+          <span className="text-sm font-medium text-gray-700">{year}年{month}月</span>
+          <Button variant="secondary" onClick={handleNextMonth}>次月</Button>
         </div>
       </div>
-
+      {error && <div role="alert" className="px-4 py-3 rounded-md border bg-red-50 text-red-800 border-red-200">{error}</div>}
       {data && (
         <>
           <Card>
@@ -107,25 +88,12 @@ export default function AttendancePage() {
               </table>
             </div>
           </Card>
-
           <Card title="月間サマリー">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500">勤務日数</span>
-                <p className="font-semibold">{data.summary.workingDays}日</p>
-              </div>
-              <div>
-                <span className="text-gray-500">勤務時間</span>
-                <p className="font-semibold">{formatMinutes(data.summary.totalWorkingMinutes)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">残業</span>
-                <p className="font-semibold">{formatMinutes(data.summary.totalOvertimeMinutes)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">深夜</span>
-                <p className="font-semibold">{formatMinutes(data.summary.totalNightMinutes)}</p>
-              </div>
+              <div><span className="text-gray-500">勤務日数</span><p className="font-semibold">{data.summary.workingDays}日</p></div>
+              <div><span className="text-gray-500">勤務時間</span><p className="font-semibold">{formatMinutes(data.summary.totalWorkingMinutes)}</p></div>
+              <div><span className="text-gray-500">残業</span><p className="font-semibold">{formatMinutes(data.summary.totalOvertimeMinutes)}</p></div>
+              <div><span className="text-gray-500">深夜</span><p className="font-semibold">{formatMinutes(data.summary.totalNightMinutes)}</p></div>
             </div>
           </Card>
         </>
