@@ -50,6 +50,14 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional(readOnly = true)
+    public Long findIdByEmail(String email) {
+        return employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", email))
+                .getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public EmployeeResponse findById(Long id) {
         var employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", id));

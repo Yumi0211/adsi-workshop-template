@@ -12,6 +12,8 @@ public interface EmployeeService {
 
     EmployeeResponse findById(Long id);
 
+    Long findIdByEmail(String email);
+
     List<EmployeeResponse> findAll();
 
     EmployeeResponse update(Long id, EmployeeUpdateRequest request);
